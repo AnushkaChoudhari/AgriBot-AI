@@ -16,7 +16,7 @@ CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
 
 # Retrieval
-TOP_K = 5
+TOP_K = 4
 
 LLM_PROVIDER = "gemini"
-LLM_MODEL = "gemini-3.5-flash"
+LLM_MODEL = "gemini-2.5-flash-lite"
