@@ -7,16 +7,16 @@ router = APIRouter()
 
 
 class ChatRequest(BaseModel):
-    question: str
+    message: str
 
 
 class ChatResponse(BaseModel):
-    answer: str
+    response: str
 
 
 @router.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
 
-    answer = ask_agribot(request.question)
+    answer = ask_agribot(request.message)
 
-    return ChatResponse(answer=answer)
+    return ChatResponse(response=answer)

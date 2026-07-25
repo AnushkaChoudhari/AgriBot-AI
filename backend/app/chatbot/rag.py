@@ -1,77 +1,93 @@
-from app.chatbot.retriever import get_retriever
 from app.chatbot.llm import ask_llm
 from app.chatbot.prompts import SYSTEM_PROMPT
 from app.chatbot.memory import memory
-
-retriever = get_retriever()
+from app.chatbot.router import detect_intent
+from app.tools.rag_tool import search_documents
+from app.tools.weather_tool import get_weather_context
+from app.tools.prompt_builder import build_prompt
 
 
 def ask_agribot(question: str) -> str:
 
+    # Save user message
     memory.add_user(question)
 
-    # Retrieve relevant documents
-    docs = retriever.invoke(question)
-
-    # Print retrieved documents
-    print("\n========== RETRIEVED DOCUMENTS ==========\n")
-
-    for i, doc in enumerate(docs, start=1):
-        print(f"\n----- Document {i} -----")
-        print(doc.page_content[:500])
-
-    # Combine retrieved text into one context
-    context = "\n\n".join(doc.page_content for doc in docs)
-
-    # Get conversation history
+    # Conversation history
     history = memory.get_history()
 
-    # Build prompt
-    prompt = f"""
-{SYSTEM_PROMPT}
+    # Detect intent
+    intent = detect_intent(question)
 
-=========================
-CONVERSATION HISTORY
-=========================
+    print("\n========== INTENT ==========")
+    print(intent)
 
-{history}
+    context = ""
+    weather = ""
 
-=========================
-KNOWLEDGE BASE
-=========================
+    # ==========================================
+    # AGRICULTURE
+    # ==========================================
+    if intent == "agriculture":
 
-{context}
+        context = search_documents(question)
 
-=========================
-USER QUESTION
-=========================
-
-{question}
-
-=========================
-ANSWER
-=========================
+        weather = """
+Weather Information:
+Not required for this question.
 """
 
-    # Ask Gemini
+    # ==========================================
+    # WEATHER
+    # ==========================================
+    elif intent == "weather":
+
+        context = """
+Knowledge Base:
+Not required for this question.
+"""
+
+        weather = get_weather_context(question)
+
+    # ==========================================
+    # WEATHER + AGRICULTURE
+    # ==========================================
+    elif intent == "weather_agriculture":
+
+        context = search_documents(question)
+
+        weather = get_weather_context(question)
+
+    # ==========================================
+    # GENERAL
+    # ==========================================
+    else:
+
+        context = """
+Knowledge Base:
+Not required.
+"""
+
+        weather = """
+Weather Information:
+Not required.
+"""
+
+    # ==========================================
+    # BUILD PROMPT
+    # ==========================================
+    prompt = build_prompt(
+    history=history,
+    weather=weather,
+    context=context,
+    question=question,
+)
+
+    print("\n========== FINAL PROMPT ==========\n")
+    print(prompt)
+    print("\n==================================\n")
+
     answer = ask_llm(prompt)
 
-    # Save bot response
     memory.add_bot(answer)
 
     return answer
-
-
-if __name__ == "__main__":
-
-    while True:
-
-        question = input("\nYou: ")
-
-        if question.lower() == "exit":
-            break
-
-        answer = ask_agribot(question)
-
-        print("\nAgriBot:\n")
-        print(answer)
